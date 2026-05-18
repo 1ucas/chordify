@@ -1,0 +1,29 @@
+# Python
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv310/
+venv/
+
+# OS
+.DS_Store
+
+# Editor / tooling
+.claude/
+
+# Local caches and generated artifacts
+.cache/
+outputs/
+reports/
+
+# Scratch / tmp documents
+*.tmp.md
+
+# Internal eval + tuning scripts (depend on local .cache/audio)
+scripts/eval_chords.py
+scripts/sweep_*.py
+
+# Internal reference charts (contain copyrighted lyrics)
+examples/
