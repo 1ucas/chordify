@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import whisper
-
 DEFAULT_WHISPER_MODEL = "large-v3"
 DEFAULT_PARAKEET_MODEL = "nvidia/parakeet-tdt-0.6b-v3"
 SUPPORTED_TRANSCRIBERS = {"whisper", "parakeet"}
@@ -54,6 +52,9 @@ def _transcribe_with_whisper(
     verbose: bool = False,
 ) -> TranscriptionResult:
     """Transcribe audio using OpenAI Whisper."""
+    # Imported lazily so chord detection works without the whisper/torch stack.
+    import whisper
+
     if verbose:
         print(f"Loading Whisper model: {model_name}")
 

@@ -5,18 +5,21 @@
    so subsequent runs on the same video are instant.
 2. **Detect Chords** (`chordify/detector.py`):
    - HPSS suppresses percussion before chroma extraction.
-   - Two chroma representations are blended — CENS (0.6) for stability across
-     beats, CQT (0.4) for harmonic detail — plus a bass-focused CQT chroma in
-     the C2–C5 range for root disambiguation.
-   - `librosa.beat.beat_track` produces beat boundaries, then groups of
-     `BEATS_PER_CHORD_SEGMENT` beats are absorbed until each segment is at
-     least `MIN_SEGMENT_SECONDS` (0.7s) long — compensates for librosa
-     over-estimating tempo on slow songs.
+   - Two chroma representations are blended — CENS (0.7, with a short
+     11-frame smoothing window) for stability, CQT (0.3) for harmonic
+     detail — both over C2–C7, plus a bass-focused CQT chroma in the
+     C2–C5 range for root disambiguation. The C1 octave is excluded: its
+     long CQT analysis windows smear bass energy across chord boundaries.
+   - `librosa.beat.beat_track` produces beat boundaries; single beats are
+     used as segments, absorbing extra beats only when a segment would be
+     shorter than `MIN_SEGMENT_SECONDS` (0.25s).
    - Per-segment chroma is median-aggregated and smoothed with a triangular
      window of length 3.
    - A Krumhansl-Schmuckler key estimate seeds a soft key prior; a Viterbi
-     decoder scores each major/minor triad template against per-segment
-     chroma with bass-root bonuses, non-chord-energy penalties, and a
+     decoder scores each major/minor triad template (equal-weight chord
+     tones — root-weighted templates systematically follow the bass note,
+     which spends half its time on the fifth in pop) against per-segment
+     chroma with bass-root bonuses, non-chord-tone-bass penalties, and a
      chord-change penalty.
    - A second Viterbi pass adds a song-palette prior (chord types with
      negligible time share in pass 1 get a small penalty in pass 2),
