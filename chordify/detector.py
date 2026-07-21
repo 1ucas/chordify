@@ -39,28 +39,32 @@ class KeyContext:
 
 # Chord templates for major and minor chords only
 # Each template is a 12-element array representing pitch classes (C, C#, D, ..., B)
-# Root note weighted higher for better matching
+# Equal weights: root-heavy templates systematically mis-vote for whichever
+# chord's root matches the loudest pitch class (usually the bass note — and pop
+# bass lines spend half their time on the fifth), which was the single largest
+# accuracy loss on the ground-truth benchmark (scripts/chord_eval.py).
 NOTE_NAMES_SHARP = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-ROOT_WEIGHT = 3.0
-THIRD_WEIGHT = 1.6
+ROOT_WEIGHT = 1.0
+THIRD_WEIGHT = 1.0
 FIFTH_WEIGHT = 1.0
-NON_CHORD_ENERGY_WEIGHT = 0.35  # Penalty applied to energy on non-chord tones
-BASS_ROOT_BOOST = 0.25  # Boost when bass supports the chord root
-BASS_ROOT_PROMINENCE_BOOST = 0.2  # Extra boost if root stands out in bass
-BASS_ROOT_MISMATCH_PENALTY = 0.15  # Mild penalty if bass strongly favors another root
+NON_CHORD_ENERGY_WEIGHT = 0.5  # Penalty applied to energy on non-chord tones
+BASS_ROOT_BOOST = 0.15  # Boost when bass supports the chord root
+BASS_ROOT_PROMINENCE_BOOST = 0.1  # Extra boost if root stands out in bass
+BASS_ROOT_MISMATCH_PENALTY = 0.15  # Mild penalty if bass favors a non-chord tone
 BASS_MISMATCH_MARGIN = 0.05  # Ignore tiny bass differences
-PRIMARY_KEY_BONUS = 0.10
-SECONDARY_DIATONIC_PENALTY = 0.04
-NON_DIATONIC_KEY_PENALTY = 0.22
+PRIMARY_KEY_BONUS = 0.05
+SECONDARY_DIATONIC_PENALTY = 0.02
+NON_DIATONIC_KEY_PENALTY = 0.12
 CHORD_CHANGE_PENALTY = 0.18
 NO_CHORD_CHANGE_PENALTY = 0.10
-BEATS_PER_CHORD_SEGMENT = 2
-MIN_SEGMENT_SECONDS = 0.7  # absorb beats shorter than this (handles variable tempo)
+BEATS_PER_CHORD_SEGMENT = 1
+MIN_SEGMENT_SECONDS = 0.25  # absorb beats shorter than this (handles variable tempo)
 SONG_PALETTE_MIN_SHARE = 0.025
 SONG_PALETTE_RARE_PENALTY = 0.05
 SONG_PALETTE_COMMON_BONUS = 0.02
 EXTENSION_MIN_ENERGY = 0.56
 SLASH_BASS_MARGIN = 0.20
+CENS_WEIGHT = 0.7  # Blend of smoothed CENS vs raw CQT chroma for chord scoring
 
 LOW_C_HZ = librosa.note_to_hz("C1")
 BASS_C_HZ = librosa.note_to_hz("C2")
@@ -162,7 +166,14 @@ def _score_chord(
             bass_prominence = root_energy - bass_mean
             score += BASS_ROOT_BOOST * root_energy
             score += BASS_ROOT_PROMINENCE_BOOST * bass_prominence
-            if bass_max > root_energy + BASS_MISMATCH_MARGIN:
+            # Pop bass lines constantly alternate root and fifth (and walk
+            # through the third), so a chord-tone bass is never evidence
+            # against the chord. Only penalize a dominant NON-chord-tone bass.
+            bass_idx = int(np.argmax(bass_normalized))
+            if (
+                not mask[bass_idx]
+                and bass_max > root_energy + BASS_MISMATCH_MARGIN
+            ):
                 score -= BASS_ROOT_MISMATCH_PENALTY * (bass_max - root_energy)
 
     return score
@@ -673,8 +684,8 @@ def detect_chords(
         hop_length=hop_length,
         tuning=tuning,
         n_chroma=12,
-        fmin=LOW_C_HZ,
-        n_octaves=6,
+        fmin=BASS_C_HZ,
+        n_octaves=5,
     )
 
     # Extract bass-focused chroma (lower octaves where root notes are strongest)
@@ -694,8 +705,9 @@ def detect_chords(
         hop_length=hop_length,
         tuning=tuning,
         n_chroma=12,
-        fmin=LOW_C_HZ,
-        n_octaves=6,
+        fmin=BASS_C_HZ,
+        n_octaves=5,
+        win_len_smooth=11,
     )
 
     frame_count = min(chroma_full.shape[1], chroma_bass.shape[1], chroma_cens.shape[1])
@@ -716,7 +728,7 @@ def detect_chords(
     frame_norms_bass[frame_norms_bass == 0.0] = 1.0
     chroma_bass = chroma_bass / frame_norms_bass
 
-    chroma = (0.6 * chroma_cens) + (0.4 * chroma_full)
+    chroma = (CENS_WEIGHT * chroma_cens) + ((1.0 - CENS_WEIGHT) * chroma_full)
     frame_norms = np.linalg.norm(chroma, axis=0, keepdims=True)
     frame_norms[frame_norms == 0.0] = 1.0
     chroma = chroma / frame_norms

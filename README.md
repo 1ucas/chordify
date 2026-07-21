@@ -40,22 +40,26 @@ Formatted results are printed to stdout or written to `--output-file`; pass
 
 ## Accuracy
 
-On an internal set of three reference songs, the current chord detector
-averages **~88%** against verified chord charts (composite score 0.877).
-Per-song breakdown:
+The detector is tuned against a ground-truth benchmark
+(`scripts/chord_eval.py`) that renders pop-style songs — piano comping,
+root/fifth bass lines, melody, and drums — from known chord progressions
+and scores the detected chords frame-by-frame against the truth. On the
+six-song suite (multiple keys, tempos from 74–132 BPM, two-beat changes,
+borrowed chords, and a detuned recording) the detector currently scores
+**0.98 mean frame accuracy**, and ~0.94 on held-out arpeggiated
+arrangements it was not tuned on.
 
-| Song | Score |
-|---|---|
-| Save Tonight | 0.913 |
-| Welcome to My Life | 0.902 |
-| Senhor Te Quero | 0.815 |
+Run it yourself:
 
-The composite score combines palette coverage, palette overlap,
-consecutive-chord transition overlap, and chord-change density, with a
-12-key transposition search so recordings in a different key than the
-reference chart still score fairly. The evaluation set is small and skewed
-toward verse/chorus pop with mostly-triadic harmony — treat the number as
-directional, not a published benchmark.
+```bash
+python scripts/chord_eval.py           # full suite
+python scripts/chord_eval.py --song fast-d --dump   # detected-vs-truth timeline
+```
+
+Synthetic renders are cleaner than real recordings (no vocals, no dense
+production), so treat the number as an upper bound — but the same harness
+is the fastest way to reproduce and fix failures: add a progression that
+matches the song the detector got wrong, run with `--dump`, and iterate.
 
 ## Installation
 
