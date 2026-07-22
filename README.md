@@ -12,6 +12,7 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
 
 - **YouTube Audio Extraction** - Download audio from any YouTube video (with a local cache so each video is fetched only once)
 - **Automatic Chord Detection** - CQT/CENS chroma matched against major/minor triad templates, with adaptive bar aggregation, bass-aware Viterbi decoding, key + song-palette priors, and conservative slash/extension display
+- **Optional Vocal/Drum Isolation** - Opt-in Demucs (`htdemucs_ft`) stem separation that strips vocals and drums before chroma analysis, keeping only the chord-bearing accompaniment (bass + other). Helps on vocal-heavy recordings where a sung note is otherwise misread as a chord; slower and gated behind the `separation` extra
 - **Lyrics Transcription** - Speech-to-text using OpenAI Whisper or NVIDIA Parakeet (word-level timestamps)
 - **Aligned Output** - Chord symbols positioned above corresponding lyrics, with sharp/flat respelling and optional `--display-key` / `--capo` transposition
 - **Offline Processing** - All processing happens locally, no API keys required
@@ -32,6 +33,12 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
                        │                  │    │  (word-level timing) │
                        └──────────────────┘    └──────────────────────┘
 ```
+
+An optional Demucs stem-separation stage can sit between the extractor and the
+detector: with `--isolate-instrumental` the mix is split into
+drums/bass/other/vocals and only bass + other are recombined for chroma
+analysis, removing the vocal melody and drum transients that otherwise pollute
+it. See [Optional: vocal & drum isolation](#optional-vocal--drum-isolation).
 
 Audio downloads are cached at `<repo>/.cache/audio/{video_id}.wav` so the same
 video is downloaded only once. Pass `--no-cache` to bypass the cache.
@@ -61,6 +68,44 @@ production), so treat the number as an upper bound — but the same harness
 is the fastest way to reproduce and fix failures: add a progression that
 matches the song the detector got wrong, run with `--dump`, and iterate.
 
+## Optional: vocal & drum isolation
+
+Chroma-based detection is confused by two things that aren't the harmony: the
+sung melody (vocal notes land on non-chord tones) and drum transients
+(broadband energy that smears the chroma). Passing `--isolate-instrumental`
+(or `detect_chords(..., isolate_instrumental=True)`) runs Demucs' fine-tuned
+Hybrid Transformer model (`htdemucs_ft`) to split the track into
+drums/bass/other/vocals and feeds only **bass + other** to the chroma stage.
+Bass is kept on purpose — the bass note is usually the chord root, and the
+detector already scores against a bass-focused chroma, so dropping it removes
+the strongest root cue (measured: `other`-only did *not* improve accuracy and
+merely relocated the error).
+
+It is **opt-in** because it is not free:
+
+- Requires the `separation` extra and downloads `htdemucs_ft` (~320 MB,
+  safetensors) once from the Demucs author's Hugging Face repo.
+- Much slower — separation runs four specialist models per track (minutes per
+  song, versus seconds for the raw pipeline).
+- Separation can introduce its own artifacts, so it is not always a win on
+  already-clean recordings.
+
+Measured on the three verified reference charts (chart-vocabulary consistency,
+transposition-aware):
+
+| Song | Raw pipeline | `--isolate-instrumental` |
+|------|-------------:|-------------------------:|
+| Save Tonight | 100.0% | 100.0% |
+| Welcome to My Life | 100.0% | 98.5% |
+| Senhor Te Quero | 97.4% | ~99% |
+
+The win is removing vocal bleed: Senhor Te Quero's raw pipeline scattered
+spurious `Am` chords where the voice held a non-chord tone, and isolation clears
+them. Already-clean songs are left unchanged, and separation can cost a little
+where it leaves an artifact on a low-information section such as a fade-out —
+hence a flag, not the default. (Exact scores drift a point or two run-to-run, as
+GPU-accelerated separation naturally does.)
+
 ## Installation
 
 ```bash
@@ -81,6 +126,12 @@ To enable NVIDIA Parakeet transcription, install the optional NeMo dependencies:
 
 ```bash
 pip install -e '.[parakeet]'
+```
+
+To enable optional Demucs vocal/drum isolation (`--isolate-instrumental`):
+
+```bash
+pip install -e '.[separation]'
 ```
 
 ### System Dependencies
@@ -109,6 +160,9 @@ sudo apt install ffmpeg
 ## Notes
 
 - First run will download the selected transcription model.
+- `--isolate-instrumental` downloads the Demucs `htdemucs_ft` model (~320 MB,
+  safetensors, from the Demucs author's Hugging Face repo) on first use and is
+  significantly slower; it requires the optional `separation` extra.
 - Python 3.10 is the primary supported runtime (`pyproject.toml` pins
   `>=3.10,<3.13`). 3.13 has worked in practice with `librosa 0.11.0`, but
   isn't pinned — fall back to 3.10/3.11/3.12 if you hit numba/librosa
