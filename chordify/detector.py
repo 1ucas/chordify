@@ -643,6 +643,7 @@ def detect_chords(
     hop_length: int = 512,
     min_confidence: float = 0.52,
     min_chord_duration: float = 0.7,
+    isolate_instrumental: bool = False,
 ) -> list[Chord]:
     """
     Detect chords in an audio file using librosa chroma features.
@@ -653,6 +654,10 @@ def detect_chords(
         hop_length: Number of samples between frames (larger = faster, less precise)
         min_confidence: Minimum score needed before "N" becomes competitive
         min_chord_duration: Minimum duration for a reported chord
+        isolate_instrumental: If True, run Demucs stem separation first and keep
+            only the chord-bearing accompaniment (bass + other), dropping vocals
+            and drums before chroma analysis. Requires the optional ``demucs``
+            dependency and is significantly slower.
 
     Returns:
         List of Chord objects with timing information
@@ -660,8 +665,33 @@ def detect_chords(
     if verbose:
         print(f"Analyzing chords in: {audio_path.name}")
 
-    # Load audio
-    y, sr = librosa.load(str(audio_path), sr=22050)
+    if isolate_instrumental:
+        from .separation import DETECTOR_SR, load_instrumental
+
+        y = load_instrumental(audio_path, verbose=verbose)
+        sr = DETECTOR_SR
+    else:
+        y, sr = librosa.load(str(audio_path), sr=22050)
+
+    return _detect_chords_from_signal(
+        y,
+        sr,
+        verbose=verbose,
+        hop_length=hop_length,
+        min_confidence=min_confidence,
+        min_chord_duration=min_chord_duration,
+    )
+
+
+def _detect_chords_from_signal(
+    y: np.ndarray,
+    sr: int = 22050,
+    verbose: bool = False,
+    hop_length: int = 512,
+    min_confidence: float = 0.52,
+    min_chord_duration: float = 0.7,
+) -> list[Chord]:
+    """Run the chroma/Viterbi chord pipeline on an in-memory mono signal."""
     duration = len(y) / sr
 
     if verbose:

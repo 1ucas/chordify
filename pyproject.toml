@@ -38,6 +38,9 @@ dependencies = [
 parakeet = [
     "nemo_toolkit[asr]>=2.4.0",
 ]
+separation = [
+    "demucs>=4.0",
+]
 
 [project.scripts]
 chordify = "chordify.cli:app"

@@ -180,6 +180,17 @@ def main(
             help="Skip the local audio cache (force re-download)",
         ),
     ] = False,
+    isolate_instrumental: Annotated[
+        bool,
+        typer.Option(
+            "--isolate-instrumental",
+            help=(
+                "Strip vocals and drums with Demucs before chord detection "
+                "(keeps bass+other). Requires the 'separation' extra and is "
+                "much slower, but helps on vocal-heavy recordings"
+            ),
+        ),
+    ] = False,
     transcriber: Annotated[
         str,
         typer.Option(
@@ -303,6 +314,7 @@ def main(
             chords = detect_chords(
                 audio_path=download_result.audio_path,
                 verbose=verbose,
+                isolate_instrumental=isolate_instrumental,
             )
             progress.update(task, completed=True)
 

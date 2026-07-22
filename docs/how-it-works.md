@@ -4,6 +4,12 @@
    transcodes to WAV via FFmpeg. Files are cached at `.cache/audio/{video_id}.wav`
    so subsequent runs on the same video are instant.
 2. **Detect Chords** (`chordify/detector.py`):
+   - *(optional, `--isolate-instrumental`)* Demucs `htdemucs_ft` first splits
+     the mix into drums/bass/other/vocals; only bass + other are recombined and
+     fed forward, dropping the vocal melody and drum transients that pollute the
+     chroma. Bass is retained because it carries the chord root the bass-focused
+     chroma relies on. Requires the optional `separation` extra and is much
+     slower. See `chordify/separation.py`.
    - HPSS suppresses percussion before chroma extraction.
    - Two chroma representations are blended — CENS (0.7, with a short
      11-frame smoothing window) for stability, CQT (0.3) for harmonic
