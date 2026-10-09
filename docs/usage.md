@@ -33,6 +33,9 @@ chordify "https://www.youtube.com/watch?v=..." --chords-only
 # Use NVIDIA Parakeet for lyric transcription
 chordify "https://www.youtube.com/watch?v=..." --transcriber parakeet
 
+# Use Qwen3-ASR (trained on singing / songs with backing music)
+chordify "https://www.youtube.com/watch?v=..." --transcriber qwen3 -l pt
+
 # Override the transcription model
 chordify "https://www.youtube.com/watch?v=..." \
   --transcriber parakeet \
