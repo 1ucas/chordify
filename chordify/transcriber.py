@@ -344,7 +344,9 @@ def _transcribe_with_qwen3(
     elif torch.backends.mps.is_available():
         device, dtype = "mps", torch.float16
     else:
-        device, dtype = "cpu", torch.float32
+        # bfloat16 (the published weights' precision) halves memory: float32
+        # needs ~10 GB for both models and is OOM-killed on 16 GB machines.
+        device, dtype = "cpu", torch.bfloat16
 
     if verbose:
         print(f"Loading Qwen3-ASR model: {model_name} + {QWEN3_ALIGNER_MODEL} on {device}")
