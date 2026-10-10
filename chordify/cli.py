@@ -187,9 +187,9 @@ def main(
         typer.Option(
             "--isolate-instrumental",
             help=(
-                "Strip vocals and drums with Demucs before chord detection "
-                "(keeps bass+other). Requires the 'separation' extra and is "
-                "much slower, but helps on vocal-heavy recordings"
+                "Remove vocals before chord detection (see --separator). "
+                "Requires the 'separation' extra and is much slower, but helps "
+                "on vocal-heavy recordings"
             ),
         ),
     ] = False,
@@ -198,9 +198,10 @@ def main(
         typer.Option(
             "--separator",
             help=(
-                "Stem separator for instrumental isolation: demucs (default; "
-                "drops vocals+drums) or roformer (Mel-Band RoFormer; cleaner "
-                "vocal removal, drums left to HPSS). Implies --isolate-instrumental"
+                "Stem separator for instrumental isolation: roformer (default; "
+                "Mel-Band RoFormer, cleanest vocal removal, drums left to HPSS) "
+                "or demucs (htdemucs_ft; drops vocals+drums). Implies "
+                "--isolate-instrumental"
             ),
         ),
     ] = None,

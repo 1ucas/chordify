@@ -11,8 +11,8 @@
 | Speech Recognition (default) | [OpenAI Whisper](https://github.com/openai/whisper) — model `large-v3` | `>=20250625` | MIT |
 | Speech Recognition (alt) | [NVIDIA NeMo Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) — model `parakeet-tdt-0.6b-v3` | `nemo_toolkit[asr] >=2.4` | Apache 2.0 / CC BY 4.0 model weights |
 | Speech Recognition (alt, songs) | [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) — `Qwen3-ASR-1.7B` + `Qwen3-ForcedAligner-0.6B` for word timings | `qwen-asr >=0.0.6` | Apache 2.0 |
-| Stem Separation (optional) | [Demucs](https://github.com/adefossez/demucs) — model `htdemucs_ft` | `>=4.1.0` | MIT |
-| Vocal Removal (optional, `--separator roformer`) | Mel-Band RoFormer — architecture vendored from [lucidrains/BS-RoFormer](https://github.com/lucidrains/BS-RoFormer) v0.3.10, weights by [Kimberley Jensen](https://huggingface.co/KimberleyJSN/melbandroformer) (converted to safetensors locally) | `safetensors`, `einops` | MIT / MIT |
+| Stem Separation (optional, `--separator demucs`) | [Demucs](https://github.com/adefossez/demucs) — model `htdemucs_ft` | `>=4.1.0` | MIT |
+| Vocal Removal (optional, default separator) | Mel-Band RoFormer — architecture vendored from [lucidrains/BS-RoFormer](https://github.com/lucidrains/BS-RoFormer) v0.3.10, weights by [Kimberley Jensen](https://huggingface.co/KimberleyJSN/melbandroformer) (converted to safetensors locally) | `safetensors`, `einops` | MIT / MIT |
 | Audio post-processing | [FFmpeg](https://ffmpeg.org/) (via yt-dlp) | system package | LGPL/GPL |
 
 All components are **open-source and free**. Processing happens entirely on your local machine.

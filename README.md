@@ -12,7 +12,7 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
 
 - **YouTube Audio Extraction** - Download audio from any YouTube video (with a local cache so each video is fetched only once)
 - **Automatic Chord Detection** - CQT/CENS chroma matched against major/minor triad templates, with adaptive bar aggregation, bass-aware Viterbi decoding, key + song-palette priors, and conservative slash/extension display
-- **Optional Vocal/Drum Isolation** - Opt-in Demucs (`htdemucs_ft`) stem separation that strips vocals and drums before chroma analysis, keeping only the chord-bearing accompaniment (bass + other). Helps on vocal-heavy recordings where a sung note is otherwise misread as a chord; slower and gated behind the `separation` extra
+- **Optional Vocal Isolation** - Opt-in stem separation before chroma analysis: Mel-Band RoFormer vocal removal by default, or Demucs (`htdemucs_ft`, keeps bass + other). Helps on vocal-heavy recordings where a sung note is otherwise misread as a chord; slower and gated behind the `separation` extra
 - **Lyrics Transcription** - Speech-to-text using OpenAI Whisper, NVIDIA Parakeet, or Qwen3-ASR (word-level timestamps; Qwen3-ASR is trained on singing and songs with backing music)
 - **Aligned Output** - Chord symbols positioned above corresponding lyrics, with sharp/flat respelling and optional `--display-key` / `--capo` transposition
 - **Offline Processing** - All processing happens locally, no API keys required
@@ -35,8 +35,9 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
                        └──────────────────┘    └──────────────────────┘
 ```
 
-An optional Demucs stem-separation stage can sit between the extractor and the
-detector: with `--isolate-instrumental` the mix is split into
+An optional stem-separation stage can sit between the extractor and the
+detector: with `--isolate-instrumental` a Mel-Band RoFormer model removes the
+vocals (default), or with `--separator demucs` the mix is split into
 drums/bass/other/vocals and only bass + other are recombined for chroma
 analysis, removing the vocal melody and drum transients that otherwise pollute
 it. See [Optional: vocal & drum isolation](#optional-vocal--drum-isolation).
@@ -74,7 +75,9 @@ matches the song the detector got wrong, run with `--dump`, and iterate.
 Chroma-based detection is confused by two things that aren't the harmony: the
 sung melody (vocal notes land on non-chord tones) and drum transients
 (broadband energy that smears the chroma). Passing `--isolate-instrumental`
-(or `detect_chords(..., isolate_instrumental=True)`) runs Demucs' fine-tuned
+(or `detect_chords(..., isolate_instrumental=True)`) removes the vocals with a
+Mel-Band RoFormer model by default (see below); drums are then suppressed by
+the detector's HPSS stage. `--separator demucs` instead runs Demucs' fine-tuned
 Hybrid Transformer model (`htdemucs_ft`) to split the track into
 drums/bass/other/vocals and feeds only **bass + other** to the chroma stage.
 Bass is kept on purpose — the bass note is usually the chord root, and the
@@ -84,15 +87,17 @@ merely relocated the error).
 
 It is **opt-in** because it is not free:
 
-- Requires the `separation` extra and downloads `htdemucs_ft` (~320 MB,
-  safetensors) once from the Demucs author's Hugging Face repo.
-- Much slower — separation runs four specialist models per track (minutes per
-  song, versus seconds for the raw pipeline).
+- Requires the `separation` extra and downloads the separator's weights once
+  (RoFormer ~913 MB; `htdemucs_ft` ~320 MB from the Demucs author's Hugging
+  Face repo).
+- Much slower — minutes per song versus seconds for the raw pipeline, and
+  RoFormer is slow on CPU (about 10 minutes for a 2-minute song in testing);
+  a CUDA or Apple Silicon GPU is used automatically.
 - Separation can introduce its own artifacts, so it is not always a win on
   already-clean recordings.
 
-Measured on the three verified reference charts (chart-vocabulary consistency,
-transposition-aware):
+Measured with Demucs on the three verified reference charts (chart-vocabulary
+consistency, transposition-aware; RoFormer has not been scored on them yet):
 
 | Song | Raw pipeline | `--isolate-instrumental` |
 |------|-------------:|-------------------------:|
@@ -107,16 +112,14 @@ where it leaves an artifact on a low-information section such as a fade-out —
 hence a flag, not the default. (Exact scores drift a point or two run-to-run, as
 GPU-accelerated separation naturally does.)
 
-### Alternative separator: Mel-Band RoFormer
+### Default separator: Mel-Band RoFormer
 
-`--separator roformer` (implies `--isolate-instrumental`) swaps Demucs for
-Kimberley Jensen's [Mel-Band RoFormer vocal model](https://github.com/KimberleyJensen/Mel-Band-Roformer-Vocal-Model)
+The default separator is Kimberley Jensen's [Mel-Band RoFormer vocal model](https://github.com/KimberleyJensen/Mel-Band-Roformer-Vocal-Model)
 (MIT). On MVSep's Multisong benchmark it removes vocals markedly more cleanly
 than `htdemucs_ft` (vocals SDR 11.01 vs 8.33 dB; instrumental 17.32 vs 14.63
 dB). It only splits vocals from everything else, so drums stay in and are
-suppressed by the detector's existing HPSS stage instead. It has not yet been
-benchmarked against Demucs on the reference charts above, so Demucs stays the
-default.
+suppressed by the detector's existing HPSS stage instead. Pass
+`--separator demucs` to use the previous Demucs path.
 
 The weights are only published as a PyTorch pickle, a format that can run code
 when loaded, so Chordify never loads that file directly:
@@ -161,8 +164,8 @@ optional Qwen dependencies:
 pip install -e '.[qwen3]'
 ```
 
-To enable optional vocal/drum isolation (`--isolate-instrumental`, with Demucs
-or `--separator roformer`):
+To enable optional vocal isolation (`--isolate-instrumental`, with RoFormer or
+`--separator demucs`):
 
 ```bash
 pip install -e '.[separation]'
@@ -199,11 +202,11 @@ to a reduced mode with limited formats.
 ## Notes
 
 - First run will download the selected transcription model.
-- `--isolate-instrumental` downloads the Demucs `htdemucs_ft` model (~320 MB,
-  safetensors, from the Demucs author's Hugging Face repo) on first use and is
-  significantly slower; it requires the optional `separation` extra.
-  `--separator roformer` instead downloads the Mel-Band RoFormer vocal model
-  (~913 MB) once and converts it to safetensors under `.cache/models/`.
+- `--isolate-instrumental` downloads the Mel-Band RoFormer vocal model
+  (~913 MB) once and converts it to safetensors under `.cache/models/`; it is
+  significantly slower and requires the optional `separation` extra.
+  `--separator demucs` instead downloads Demucs `htdemucs_ft` (~320 MB,
+  safetensors, from the Demucs author's Hugging Face repo).
 - Python 3.10 is the primary supported runtime (`pyproject.toml` pins
   `>=3.10,<3.13`). 3.13 has worked in practice with `librosa 0.11.0`, but
   isn't pinned — fall back to 3.10/3.11/3.12 if you hit numba/librosa

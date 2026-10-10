@@ -45,7 +45,7 @@ import numpy as np
 
 DETECTOR_SR = 22050
 SEPARATORS = ("demucs", "roformer")
-DEFAULT_SEPARATOR = "demucs"
+DEFAULT_SEPARATOR = "roformer"
 DEMUCS_MODEL = "htdemucs_ft"
 # Stems summed to form the instrumental fed to the chroma stage. Vocals (melody)
 # and drums (percussion) are dropped; bass carries the root, "other" the chords.
