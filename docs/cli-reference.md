@@ -8,8 +8,10 @@
 | `--language` | `-l` | Language hint for transcription (en/pt) |
 | `--chords-only` | | Skip lyrics, show timestamped chords only |
 | `--keep-audio` | `-k` | Copy the audio file into the current directory |
+| `--isolate-instrumental` | | Remove vocals before chord detection (`separation` extra) |
+| `--separator` | | Separator for isolation: `roformer` (default) or `demucs`; implies `--isolate-instrumental` |
 | `--no-cache` | | Bypass the local audio cache (force re-download) |
-| `--transcriber` | | Lyrics transcription backend (`whisper` or `parakeet`) |
+| `--transcriber` | | Lyrics transcription backend (`whisper`, `parakeet`, or `qwen3`) |
 | `--transcription-model` | | Override the backend model name |
 | `--display-key` | | Transpose the displayed chart to a target key |
 | `--transpose` | | Transpose displayed chords by semitones |

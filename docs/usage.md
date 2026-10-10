@@ -33,10 +33,17 @@ chordify "https://www.youtube.com/watch?v=..." --chords-only
 # Use NVIDIA Parakeet for lyric transcription
 chordify "https://www.youtube.com/watch?v=..." --transcriber parakeet
 
+# Use Qwen3-ASR (trained on singing / songs with backing music)
+chordify "https://www.youtube.com/watch?v=..." --transcriber qwen3 -l pt
+
 # Override the transcription model
 chordify "https://www.youtube.com/watch?v=..." \
   --transcriber parakeet \
   --transcription-model nvidia/parakeet-tdt-0.6b-v3
+
+# Remove vocals before chord detection (needs the 'separation' extra)
+chordify "https://www.youtube.com/watch?v=..." --isolate-instrumental
+chordify "https://www.youtube.com/watch?v=..." --separator demucs
 
 # Keep the downloaded audio file in the current directory
 chordify "https://www.youtube.com/watch?v=..." -k

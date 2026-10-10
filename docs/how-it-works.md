@@ -4,11 +4,13 @@
    transcodes to WAV via FFmpeg. Files are cached at `.cache/audio/{video_id}.wav`
    so subsequent runs on the same video are instant.
 2. **Detect Chords** (`chordify/detector.py`):
-   - *(optional, `--isolate-instrumental`)* Demucs `htdemucs_ft` first splits
-     the mix into drums/bass/other/vocals; only bass + other are recombined and
-     fed forward, dropping the vocal melody and drum transients that pollute the
-     chroma. Bass is retained because it carries the chord root the bass-focused
-     chroma relies on. Requires the optional `separation` extra and is much
+   - *(optional, `--isolate-instrumental`)* A Mel-Band RoFormer vocal model
+     removes the vocal melody that pollutes the chroma; drums are left to the
+     HPSS step below. Its weights are loaded from a safetensors file converted
+     once from the hash-pinned checkpoint. With `--separator demucs`, Demucs
+     `htdemucs_ft` instead splits the mix into drums/bass/other/vocals and only
+     bass + other are recombined (bass carries the chord root the bass-focused
+     chroma relies on). Requires the optional `separation` extra and is much
      slower. See `chordify/separation.py`.
    - HPSS suppresses percussion before chroma extraction.
    - Two chroma representations are blended — CENS (0.7, with a short
@@ -32,9 +34,13 @@
      followed by a single-segment flicker suppressor.
    - Display decoration conservatively adds `sus2`/`sus4`/`9`/`7` extensions
      and slash bass when the residual chroma supports it.
-3. **Transcribe**: Whisper `large-v3` (default) or Parakeet `parakeet-tdt-0.6b-v3`
-   produces word-level timestamps. Whisper segment boundaries are preferred as
-   line breaks; PT enclitic-pronoun hyphens (`tocar-te`) are re-joined.
+3. **Transcribe**: Whisper `large-v3` (default), Parakeet `parakeet-tdt-0.6b-v3`,
+   or Qwen3-ASR `1.7B` produces word-level timestamps. Qwen3-ASR is trained on
+   singing voice and full songs with backing music; its word timings come from
+   `Qwen3-ForcedAligner-0.6B`, whose stripped punctuation is mapped back from
+   the transcript so phrase breaks survive. Whisper segment boundaries are
+   preferred as line breaks; PT enclitic-pronoun hyphens (`tocar-te`) are
+   re-joined.
 4. **Align**: the formatter groups words into lines (with sub-word interpolation
    when a chord change lands inside a word) and places chord symbols above the
    lyrics. `--display-key` / `--transpose` / `--capo` respells the chart

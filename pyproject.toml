@@ -26,11 +26,11 @@ classifiers = [
 ]
 dependencies = [
     "typer>=0.9.0",
-    "yt-dlp>=2023.0.0",
+    "yt-dlp[default]>=2025.11.12",
     "librosa>=0.10.0",
     "numpy>=1.23.0",
     "scipy>=1.9.0",
-    "openai-whisper>=20231117",
+    "openai-whisper>=20250625",
     "rich>=13.0.0",
 ]
 
@@ -38,8 +38,13 @@ dependencies = [
 parakeet = [
     "nemo_toolkit[asr]>=2.4.0",
 ]
+qwen3 = [
+    "qwen-asr>=0.0.6",
+]
 separation = [
-    "demucs>=4.0",
+    "demucs>=4.1.0",
+    "einops>=0.7.0",
+    "safetensors>=0.4.0",
 ]
 
 [project.scripts]

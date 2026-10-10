@@ -12,8 +12,8 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
 
 - **YouTube Audio Extraction** - Download audio from any YouTube video (with a local cache so each video is fetched only once)
 - **Automatic Chord Detection** - CQT/CENS chroma matched against major/minor triad templates, with adaptive bar aggregation, bass-aware Viterbi decoding, key + song-palette priors, and conservative slash/extension display
-- **Optional Vocal/Drum Isolation** - Opt-in Demucs (`htdemucs_ft`) stem separation that strips vocals and drums before chroma analysis, keeping only the chord-bearing accompaniment (bass + other). Helps on vocal-heavy recordings where a sung note is otherwise misread as a chord; slower and gated behind the `separation` extra
-- **Lyrics Transcription** - Speech-to-text using OpenAI Whisper or NVIDIA Parakeet (word-level timestamps)
+- **Optional Vocal Isolation** - Opt-in stem separation before chroma analysis: Mel-Band RoFormer vocal removal by default, or Demucs (`htdemucs_ft`, keeps bass + other). Helps on vocal-heavy recordings where a sung note is otherwise misread as a chord; slower and gated behind the `separation` extra
+- **Lyrics Transcription** - Speech-to-text using OpenAI Whisper, NVIDIA Parakeet, or Qwen3-ASR (word-level timestamps; Qwen3-ASR is trained on singing and songs with backing music)
 - **Aligned Output** - Chord symbols positioned above corresponding lyrics, with sharp/flat respelling and optional `--display-key` / `--capo` transposition
 - **Offline Processing** - All processing happens locally, no API keys required
 
@@ -30,12 +30,14 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
                        ┌──────────────────┐    ┌──────────────────────┐
                        │  Lyrics + Chords │◀───│  Lyrics Extractor    │
                        │  (aligned output)│    │  Whisper / Parakeet  │
+                       │                  │    │  / Qwen3-ASR         │
                        │                  │    │  (word-level timing) │
                        └──────────────────┘    └──────────────────────┘
 ```
 
-An optional Demucs stem-separation stage can sit between the extractor and the
-detector: with `--isolate-instrumental` the mix is split into
+An optional stem-separation stage can sit between the extractor and the
+detector: with `--isolate-instrumental` a Mel-Band RoFormer model removes the
+vocals (default), or with `--separator demucs` the mix is split into
 drums/bass/other/vocals and only bass + other are recombined for chroma
 analysis, removing the vocal melody and drum transients that otherwise pollute
 it. See [Optional: vocal & drum isolation](#optional-vocal--drum-isolation).
@@ -73,7 +75,9 @@ matches the song the detector got wrong, run with `--dump`, and iterate.
 Chroma-based detection is confused by two things that aren't the harmony: the
 sung melody (vocal notes land on non-chord tones) and drum transients
 (broadband energy that smears the chroma). Passing `--isolate-instrumental`
-(or `detect_chords(..., isolate_instrumental=True)`) runs Demucs' fine-tuned
+(or `detect_chords(..., isolate_instrumental=True)`) removes the vocals with a
+Mel-Band RoFormer model by default (see below); drums are then suppressed by
+the detector's HPSS stage. `--separator demucs` instead runs Demucs' fine-tuned
 Hybrid Transformer model (`htdemucs_ft`) to split the track into
 drums/bass/other/vocals and feeds only **bass + other** to the chroma stage.
 Bass is kept on purpose — the bass note is usually the chord root, and the
@@ -83,15 +87,17 @@ merely relocated the error).
 
 It is **opt-in** because it is not free:
 
-- Requires the `separation` extra and downloads `htdemucs_ft` (~320 MB,
-  safetensors) once from the Demucs author's Hugging Face repo.
-- Much slower — separation runs four specialist models per track (minutes per
-  song, versus seconds for the raw pipeline).
+- Requires the `separation` extra and downloads the separator's weights once
+  (RoFormer ~913 MB; `htdemucs_ft` ~320 MB from the Demucs author's Hugging
+  Face repo).
+- Much slower — minutes per song versus seconds for the raw pipeline, and
+  RoFormer is slow on CPU (about 10 minutes for a 2-minute song in testing);
+  a CUDA or Apple Silicon GPU is used automatically.
 - Separation can introduce its own artifacts, so it is not always a win on
   already-clean recordings.
 
-Measured on the three verified reference charts (chart-vocabulary consistency,
-transposition-aware):
+Measured with Demucs on the three verified reference charts (chart-vocabulary
+consistency, transposition-aware; RoFormer has not been scored on them yet):
 
 | Song | Raw pipeline | `--isolate-instrumental` |
 |------|-------------:|-------------------------:|
@@ -105,6 +111,29 @@ them. Already-clean songs are left unchanged, and separation can cost a little
 where it leaves an artifact on a low-information section such as a fade-out —
 hence a flag, not the default. (Exact scores drift a point or two run-to-run, as
 GPU-accelerated separation naturally does.)
+
+### Default separator: Mel-Band RoFormer
+
+The default separator is Kimberley Jensen's [Mel-Band RoFormer vocal model](https://github.com/KimberleyJensen/Mel-Band-Roformer-Vocal-Model)
+(MIT). On MVSep's Multisong benchmark it removes vocals markedly more cleanly
+than `htdemucs_ft` (vocals SDR 11.01 vs 8.33 dB; instrumental 17.32 vs 14.63
+dB). It only splits vocals from everything else, so drums stay in and are
+suppressed by the detector's existing HPSS stage instead. Pass
+`--separator demucs` to use the previous Demucs path.
+
+The weights are only published as a PyTorch pickle, a format that can run code
+when loaded, so Chordify never loads that file directly:
+
+- The architecture is vendored in `chordify/mel_band_roformer.py` (from
+  lucidrains/BS-RoFormer v0.3.10, MIT; inference-only, no extra dependencies)
+  and verified to produce bit-identical output to the original.
+- On first use the checkpoint (~913 MB) is downloaded from a pinned Hugging
+  Face revision, rejected unless its SHA-256 matches the pinned value, loaded
+  once with `torch.load(weights_only=True)` (PyTorch >= 2.6 required, as older
+  versions had a bypass, CVE-2025-32434), and converted to `safetensors`.
+- The pickle is then deleted; every later run loads only
+  `.cache/models/mel_band_roformer_vocals_kim.safetensors`, which holds tensor
+  data and nothing executable.
 
 ## Installation
 
@@ -128,7 +157,15 @@ To enable NVIDIA Parakeet transcription, install the optional NeMo dependencies:
 pip install -e '.[parakeet]'
 ```
 
-To enable optional Demucs vocal/drum isolation (`--isolate-instrumental`):
+To enable Qwen3-ASR transcription (`--transcriber qwen3`), install the
+optional Qwen dependencies:
+
+```bash
+pip install -e '.[qwen3]'
+```
+
+To enable optional vocal isolation (`--isolate-instrumental`, with RoFormer or
+`--separator demucs`):
 
 ```bash
 pip install -e '.[separation]'
@@ -146,6 +183,11 @@ On Ubuntu/Debian:
 sudo apt install ffmpeg
 ```
 
+yt-dlp needs a JavaScript runtime for full YouTube support; install
+[Deno](https://deno.com/) (`brew install deno`, or
+`curl -fsSL https://deno.land/install.sh | sh`). Without it, yt-dlp falls back
+to a reduced mode with limited formats.
+
 ## Documentation
 
 | Doc | Description |
@@ -160,15 +202,21 @@ sudo apt install ffmpeg
 ## Notes
 
 - First run will download the selected transcription model.
-- `--isolate-instrumental` downloads the Demucs `htdemucs_ft` model (~320 MB,
-  safetensors, from the Demucs author's Hugging Face repo) on first use and is
-  significantly slower; it requires the optional `separation` extra.
+- `--isolate-instrumental` downloads the Mel-Band RoFormer vocal model
+  (~913 MB) once and converts it to safetensors under `.cache/models/`; it is
+  significantly slower and requires the optional `separation` extra.
+  `--separator demucs` instead downloads Demucs `htdemucs_ft` (~320 MB,
+  safetensors, from the Demucs author's Hugging Face repo).
 - Python 3.10 is the primary supported runtime (`pyproject.toml` pins
   `>=3.10,<3.13`). 3.13 has worked in practice with `librosa 0.11.0`, but
   isn't pinned — fall back to 3.10/3.11/3.12 if you hit numba/librosa
   import errors.
 - Parakeet support requires the optional `parakeet` extra and a model that
   returns word-level timestamps; the default is `nvidia/parakeet-tdt-0.6b-v3`.
+- Qwen3-ASR support requires the optional `qwen3` extra and downloads
+  `Qwen/Qwen3-ASR-1.7B` plus `Qwen/Qwen3-ForcedAligner-0.6B` (~5 GB together)
+  on first use. Word timings come from the aligner, which covers 11 languages
+  (including English and Portuguese); a GPU is strongly recommended.
 - Processing time depends on video length and your hardware.
 - GPU acceleration is supported via Whisper's CUDA path if you have CUDA
   installed.

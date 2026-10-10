@@ -15,6 +15,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from chordify.transcriber import (  # noqa: E402
     DEFAULT_PARAKEET_MODEL,
+    DEFAULT_QWEN3_MODEL,
     DEFAULT_WHISPER_MODEL,
     transcribe_audio,
 )
@@ -139,12 +140,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--backend",
         action="append",
-        choices=("whisper", "parakeet"),
-        help="Backend to run. Pass multiple times; defaults to both.",
+        choices=("whisper", "parakeet", "qwen3"),
+        help="Backend to run. Pass multiple times; defaults to all three.",
     )
     parser.add_argument("--language", help="Optional language hint")
     parser.add_argument("--whisper-model", default=DEFAULT_WHISPER_MODEL)
     parser.add_argument("--parakeet-model", default=DEFAULT_PARAKEET_MODEL)
+    parser.add_argument("--qwen3-model", default=DEFAULT_QWEN3_MODEL)
     parser.add_argument("--reference-text", type=Path, help="Optional lyrics text for WER")
     parser.add_argument("--json-output", type=Path, help="Optional path to save JSON results")
     parser.add_argument("--verbose", action="store_true", help="Show backend progress")
@@ -158,10 +160,11 @@ def main() -> int:
         print(f"Audio file does not exist: {args.audio_path}", file=sys.stderr)
         return 2
 
-    backends = args.backend or ["whisper", "parakeet"]
+    backends = args.backend or ["whisper", "parakeet", "qwen3"]
     model_by_backend = {
         "whisper": args.whisper_model,
         "parakeet": args.parakeet_model,
+        "qwen3": args.qwen3_model,
     }
     reference_text = args.reference_text.read_text() if args.reference_text else None
     duration_seconds = audio_duration(args.audio_path)
