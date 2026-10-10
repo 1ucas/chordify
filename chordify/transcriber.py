@@ -356,8 +356,10 @@ def _transcribe_with_qwen3(
         dtype=dtype,
         device_map=device,
         max_inference_batch_size=8,
-        # Timestamped audio is chunked to <=3 min; leave room for dense lyrics.
-        max_new_tokens=2048,
+        # Timestamped audio is chunked to <=3 min (~1100 tokens even at 5
+        # words/s). A higher cap only prolongs repetition loops, which run
+        # until the cap and take ~30 min on CPU at 2048.
+        max_new_tokens=1200,
         forced_aligner=QWEN3_ALIGNER_MODEL,
         forced_aligner_kwargs=dict(dtype=dtype, device_map=device),
     )
