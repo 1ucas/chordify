@@ -107,6 +107,31 @@ where it leaves an artifact on a low-information section such as a fade-out —
 hence a flag, not the default. (Exact scores drift a point or two run-to-run, as
 GPU-accelerated separation naturally does.)
 
+### Alternative separator: Mel-Band RoFormer
+
+`--separator roformer` (implies `--isolate-instrumental`) swaps Demucs for
+Kimberley Jensen's [Mel-Band RoFormer vocal model](https://github.com/KimberleyJensen/Mel-Band-Roformer-Vocal-Model)
+(MIT). On MVSep's Multisong benchmark it removes vocals markedly more cleanly
+than `htdemucs_ft` (vocals SDR 11.01 vs 8.33 dB; instrumental 17.32 vs 14.63
+dB). It only splits vocals from everything else, so drums stay in and are
+suppressed by the detector's existing HPSS stage instead. It has not yet been
+benchmarked against Demucs on the reference charts above, so Demucs stays the
+default.
+
+The weights are only published as a PyTorch pickle, a format that can run code
+when loaded, so Chordify never loads that file directly:
+
+- The architecture is vendored in `chordify/mel_band_roformer.py` (from
+  lucidrains/BS-RoFormer v0.3.10, MIT; inference-only, no extra dependencies)
+  and verified to produce bit-identical output to the original.
+- On first use the checkpoint (~913 MB) is downloaded from a pinned Hugging
+  Face revision, rejected unless its SHA-256 matches the pinned value, loaded
+  once with `torch.load(weights_only=True)` (PyTorch >= 2.6 required, as older
+  versions had a bypass, CVE-2025-32434), and converted to `safetensors`.
+- The pickle is then deleted; every later run loads only
+  `.cache/models/mel_band_roformer_vocals_kim.safetensors`, which holds tensor
+  data and nothing executable.
+
 ## Installation
 
 ```bash
@@ -136,7 +161,8 @@ optional Qwen dependencies:
 pip install -e '.[qwen3]'
 ```
 
-To enable optional Demucs vocal/drum isolation (`--isolate-instrumental`):
+To enable optional vocal/drum isolation (`--isolate-instrumental`, with Demucs
+or `--separator roformer`):
 
 ```bash
 pip install -e '.[separation]'
@@ -176,6 +202,8 @@ to a reduced mode with limited formats.
 - `--isolate-instrumental` downloads the Demucs `htdemucs_ft` model (~320 MB,
   safetensors, from the Demucs author's Hugging Face repo) on first use and is
   significantly slower; it requires the optional `separation` extra.
+  `--separator roformer` instead downloads the Mel-Band RoFormer vocal model
+  (~913 MB) once and converts it to safetensors under `.cache/models/`.
 - Python 3.10 is the primary supported runtime (`pyproject.toml` pins
   `>=3.10,<3.13`). 3.13 has worked in practice with `librosa 0.11.0`, but
   isn't pinned — fall back to 3.10/3.11/3.12 if you hit numba/librosa

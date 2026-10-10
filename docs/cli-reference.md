@@ -8,6 +8,8 @@
 | `--language` | `-l` | Language hint for transcription (en/pt) |
 | `--chords-only` | | Skip lyrics, show timestamped chords only |
 | `--keep-audio` | `-k` | Copy the audio file into the current directory |
+| `--isolate-instrumental` | | Strip vocals and drums with Demucs before chord detection (`separation` extra) |
+| `--separator` | | Separator for isolation: `demucs` (default) or `roformer`; implies `--isolate-instrumental` |
 | `--no-cache` | | Bypass the local audio cache (force re-download) |
 | `--transcriber` | | Lyrics transcription backend (`whisper`, `parakeet`, or `qwen3`) |
 | `--transcription-model` | | Override the backend model name |

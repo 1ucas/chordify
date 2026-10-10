@@ -15,6 +15,7 @@ from .detector import Chord, detect_chords, format_chords_only
 from .downloader import download_audio, extract_video_id, is_valid_youtube_url
 from .formatter import format_aligned_output
 from .notation import chord_root, parse_note, prefer_flats_for_note_name, transpose_chord_name
+from .separation import DEFAULT_SEPARATOR, SEPARATORS
 from .transcriber import (
     DEFAULT_PARAKEET_MODEL,
     DEFAULT_QWEN3_MODEL,
@@ -192,6 +193,17 @@ def main(
             ),
         ),
     ] = False,
+    separator: Annotated[
+        Optional[str],
+        typer.Option(
+            "--separator",
+            help=(
+                "Stem separator for instrumental isolation: demucs (default; "
+                "drops vocals+drums) or roformer (Mel-Band RoFormer; cleaner "
+                "vocal removal, drums left to HPSS). Implies --isolate-instrumental"
+            ),
+        ),
+    ] = None,
     transcriber: Annotated[
         str,
         typer.Option(
@@ -274,6 +286,16 @@ def main(
         console.print("[red]Error:[/red] Invalid YouTube URL")
         raise typer.Exit(1)
 
+    if separator is not None:
+        separator = separator.strip().lower()
+        if separator not in SEPARATORS:
+            console.print(
+                f"[red]Error:[/red] Unknown separator `{separator}` "
+                f"(choose one of: {', '.join(SEPARATORS)})"
+            )
+            raise typer.Exit(1)
+        isolate_instrumental = True
+
     temp_dir = None
 
     try:
@@ -317,6 +339,7 @@ def main(
                 audio_path=download_result.audio_path,
                 verbose=verbose,
                 isolate_instrumental=isolate_instrumental,
+                separator=separator or DEFAULT_SEPARATOR,
             )
             progress.update(task, completed=True)
 

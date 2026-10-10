@@ -644,6 +644,7 @@ def detect_chords(
     min_confidence: float = 0.52,
     min_chord_duration: float = 0.7,
     isolate_instrumental: bool = False,
+    separator: str = "demucs",
 ) -> list[Chord]:
     """
     Detect chords in an audio file using librosa chroma features.
@@ -658,6 +659,9 @@ def detect_chords(
             only the chord-bearing accompaniment (bass + other), dropping vocals
             and drums before chroma analysis. Requires the optional ``demucs``
             dependency and is significantly slower.
+        separator: Stem separator used when ``isolate_instrumental`` is set:
+            ``"demucs"`` (htdemucs_ft, bass + other) or ``"roformer"``
+            (Mel-Band RoFormer vocal removal; drums are left to HPSS).
 
     Returns:
         List of Chord objects with timing information
@@ -668,7 +672,7 @@ def detect_chords(
     if isolate_instrumental:
         from .separation import DETECTOR_SR, load_instrumental
 
-        y = load_instrumental(audio_path, verbose=verbose)
+        y = load_instrumental(audio_path, verbose=verbose, separator=separator)
         sr = DETECTOR_SR
     else:
         y, sr = librosa.load(str(audio_path), sr=22050)

@@ -9,7 +9,10 @@
      fed forward, dropping the vocal melody and drum transients that pollute the
      chroma. Bass is retained because it carries the chord root the bass-focused
      chroma relies on. Requires the optional `separation` extra and is much
-     slower. See `chordify/separation.py`.
+     slower. See `chordify/separation.py`. With `--separator roformer`, a
+     Mel-Band RoFormer vocal model removes only the vocals (more cleanly than
+     Demucs) and drums are left to the HPSS step below; its weights are loaded
+     from a safetensors file converted once from the hash-pinned checkpoint.
    - HPSS suppresses percussion before chroma extraction.
    - Two chroma representations are blended — CENS (0.7, with a short
      11-frame smoothing window) for stability, CQT (0.3) for harmonic

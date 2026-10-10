@@ -41,6 +41,10 @@ chordify "https://www.youtube.com/watch?v=..." \
   --transcriber parakeet \
   --transcription-model nvidia/parakeet-tdt-0.6b-v3
 
+# Remove vocals/drums before chord detection (needs the 'separation' extra)
+chordify "https://www.youtube.com/watch?v=..." --isolate-instrumental
+chordify "https://www.youtube.com/watch?v=..." --separator roformer
+
 # Keep the downloaded audio file in the current directory
 chordify "https://www.youtube.com/watch?v=..." -k
 

@@ -43,6 +43,8 @@ qwen3 = [
 ]
 separation = [
     "demucs>=4.1.0",
+    "einops>=0.7.0",
+    "safetensors>=0.4.0",
 ]
 
 [project.scripts]
