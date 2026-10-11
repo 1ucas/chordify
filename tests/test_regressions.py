@@ -11,8 +11,6 @@ from chordify.formatter import get_chord_positions_for_line
 from chordify.transcriber import (
     LyricLine,
     Word,
-    _align_qwen3_words,
-    _qwen3_language_code,
     group_words_into_lines,
     transcribe_audio,
 )
@@ -49,43 +47,6 @@ class TranscriberRegressionTests(unittest.TestCase):
         lines = group_words_into_lines(words)
 
         self.assertEqual([line.text for line in lines], ["Conhecer-te eu", "quero mais"])
-
-    def test_qwen3_words_keep_transcript_punctuation(self) -> None:
-        # The aligner strips punctuation/hyphens; the transcript keeps them.
-        text = "Quero tocar-te, Senhor. Eu te amo"
-        starts = [0.0, 0.3, 0.6, 1.1, 1.4, 1.7]
-        items = [
-            SimpleNamespace(text=t, start_time=start, end_time=start + 0.25)
-            for t, start in zip(["Quero", "tocarte", "Senhor", "Eu", "te", "amo"], starts)
-        ]
-
-        words = _align_qwen3_words(text, items)
-
-        self.assertEqual(
-            [w.text for w in words], ["Quero", "tocar-te,", "Senhor.", "Eu", "te", "amo"]
-        )
-        self.assertEqual(words[2].start_time, 0.6)
-        lines = group_words_into_lines(words)
-        self.assertEqual([line.text for line in lines], ["Quero tocar-te, Senhor.", "Eu te amo"])
-
-    def test_qwen3_words_resync_after_chunk_boundary_glue(self) -> None:
-        # Chunk texts are concatenated without a separator upstream.
-        text = "the end of oneStart of two"
-        items = [
-            SimpleNamespace(text=t, start_time=float(i), end_time=i + 0.5)
-            for i, t in enumerate(["the", "end", "of", "one", "Start", "of", "two"])
-        ]
-
-        words = _align_qwen3_words(text, items)
-
-        self.assertEqual(
-            [w.text for w in words], ["the", "end", "of", "one", "Start", "of", "two"]
-        )
-
-    def test_qwen3_language_names_map_to_codes(self) -> None:
-        self.assertEqual(_qwen3_language_code("Portuguese"), "pt")
-        self.assertEqual(_qwen3_language_code("English,Portuguese"), "en")
-        self.assertEqual(_qwen3_language_code("Klingon"), "klingon")
 
     def test_parakeet_requests_word_timestamps(self) -> None:
         output = SimpleNamespace(

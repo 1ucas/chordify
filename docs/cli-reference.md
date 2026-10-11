@@ -11,7 +11,7 @@
 | `--isolate-instrumental` | | Remove vocals before chord detection (`separation` extra) |
 | `--separator` | | Separator for isolation: `roformer` (default) or `demucs`; implies `--isolate-instrumental` |
 | `--no-cache` | | Bypass the local audio cache (force re-download) |
-| `--transcriber` | | Lyrics transcription backend (`whisper`, `parakeet`, or `qwen3`) |
+| `--transcriber` | | Lyrics transcription backend (`whisper` or `parakeet`) |
 | `--transcription-model` | | Override the backend model name |
 | `--display-key` | | Transpose the displayed chart to a target key |
 | `--transpose` | | Transpose displayed chords by semitones |

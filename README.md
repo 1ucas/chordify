@@ -13,7 +13,7 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
 - **YouTube Audio Extraction** - Download audio from any YouTube video (with a local cache so each video is fetched only once)
 - **Automatic Chord Detection** - CQT/CENS chroma matched against major/minor triad templates, with adaptive bar aggregation, bass-aware Viterbi decoding, key + song-palette priors, and conservative slash/extension display
 - **Optional Vocal Isolation** - Opt-in stem separation before chroma analysis: Mel-Band RoFormer vocal removal by default, or Demucs (`htdemucs_ft`, keeps bass + other). Helps on vocal-heavy recordings where a sung note is otherwise misread as a chord; slower and gated behind the `separation` extra
-- **Lyrics Transcription** - Speech-to-text using OpenAI Whisper, NVIDIA Parakeet, or Qwen3-ASR (word-level timestamps; Qwen3-ASR is trained on singing and songs with backing music)
+- **Lyrics Transcription** - Speech-to-text using OpenAI Whisper or NVIDIA Parakeet (word-level timestamps)
 - **Aligned Output** - Chord symbols positioned above corresponding lyrics, with sharp/flat respelling and optional `--display-key` / `--capo` transposition
 - **Offline Processing** - All processing happens locally, no API keys required
 
@@ -30,7 +30,6 @@ Mainstream chord-sheet sites cover hit songs well but tend to miss niche materia
                        ┌──────────────────┐    ┌──────────────────────┐
                        │  Lyrics + Chords │◀───│  Lyrics Extractor    │
                        │  (aligned output)│    │  Whisper / Parakeet  │
-                       │                  │    │  / Qwen3-ASR         │
                        │                  │    │  (word-level timing) │
                        └──────────────────┘    └──────────────────────┘
 ```
@@ -157,13 +156,6 @@ To enable NVIDIA Parakeet transcription, install the optional NeMo dependencies:
 pip install -e '.[parakeet]'
 ```
 
-To enable Qwen3-ASR transcription (`--transcriber qwen3`), install the
-optional Qwen dependencies:
-
-```bash
-pip install -e '.[qwen3]'
-```
-
 To enable optional vocal isolation (`--isolate-instrumental`, with RoFormer or
 `--separator demucs`):
 
@@ -213,10 +205,6 @@ to a reduced mode with limited formats.
   import errors.
 - Parakeet support requires the optional `parakeet` extra and a model that
   returns word-level timestamps; the default is `nvidia/parakeet-tdt-0.6b-v3`.
-- Qwen3-ASR support requires the optional `qwen3` extra and downloads
-  `Qwen/Qwen3-ASR-1.7B` plus `Qwen/Qwen3-ForcedAligner-0.6B` (~5 GB together)
-  on first use. Word timings come from the aligner, which covers 11 languages
-  (including English and Portuguese); a GPU is strongly recommended.
 - Processing time depends on video length and your hardware.
 - GPU acceleration is supported via Whisper's CUDA path if you have CUDA
   installed.

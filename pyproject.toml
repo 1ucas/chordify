@@ -38,9 +38,6 @@ dependencies = [
 parakeet = [
     "nemo_toolkit[asr]>=2.4.0",
 ]
-qwen3 = [
-    "qwen-asr>=0.0.6",
-]
 separation = [
     "demucs>=4.1.0",
     "einops>=0.7.0",

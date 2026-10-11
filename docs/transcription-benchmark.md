@@ -1,13 +1,12 @@
 # Transcription Benchmark
 
-Compare Whisper, Parakeet, and Qwen3-ASR on a local audio file:
+Compare Whisper and Parakeet on a local audio file:
 
 ```bash
 ./venv/bin/python scripts/benchmark_transcribers.py \
   .cache/audio/Nntd2fgMUYw.wav \
   --backend whisper \
   --backend parakeet \
-  --backend qwen3 \
   --language en
 ```
 

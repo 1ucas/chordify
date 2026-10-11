@@ -18,7 +18,6 @@ from .notation import chord_root, parse_note, prefer_flats_for_note_name, transp
 from .separation import DEFAULT_SEPARATOR, SEPARATORS
 from .transcriber import (
     DEFAULT_PARAKEET_MODEL,
-    DEFAULT_QWEN3_MODEL,
     DEFAULT_WHISPER_MODEL,
     group_words_into_lines,
     transcribe_audio,
@@ -209,7 +208,7 @@ def main(
         str,
         typer.Option(
             "--transcriber",
-            help="Lyrics transcription backend: whisper, parakeet, or qwen3",
+            help="Lyrics transcription backend: whisper or parakeet",
         ),
     ] = "whisper",
     transcription_model: Annotated[
@@ -218,8 +217,7 @@ def main(
             "--transcription-model",
             help=(
                 "Override the backend model "
-                f"(defaults: {DEFAULT_WHISPER_MODEL}, {DEFAULT_PARAKEET_MODEL}, "
-                f"or {DEFAULT_QWEN3_MODEL})"
+                f"(defaults: {DEFAULT_WHISPER_MODEL} or {DEFAULT_PARAKEET_MODEL})"
             ),
         ),
     ] = None,
