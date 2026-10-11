@@ -51,17 +51,28 @@ Formatted results are printed to stdout or written to `--output-file`; pass
 The detector is tuned against a ground-truth benchmark
 (`scripts/chord_eval.py`) that renders pop-style songs — piano comping,
 root/fifth bass lines, melody, and drums — from known chord progressions
-and scores the detected chords frame-by-frame against the truth. On the
-six-song suite (multiple keys, tempos from 74–132 BPM, two-beat changes,
-borrowed chords, and a detuned recording) the detector currently scores
-**0.98 mean frame accuracy**, and ~0.94 on held-out arpeggiated
-arrangements it was not tuned on.
+and scores the detected chords against the truth. Besides frame accuracy it
+reports chord-sequence accuracy (consecutive duplicates collapsed, scored by
+edit distance, so every spurious or missing change counts) and chord-change
+F1 (a change must land within ±0.25 s).
+
+| Suite | Frame | Sequence | Change F1 |
+|-------|------:|---------:|----------:|
+| `basic` — 6 songs: several keys, 74–132 BPM, two-beat changes, borrowed chords, a detuned recording | 98.0% | 99.4% | 99.7% |
+| `hard` — 7 songs: 7th voicings, inversions, off-beat changes, one chord per beat, arpeggios, a sustained "vocal" lead | 83.8% | 84.6% | 91.5% |
+
+The hard suite exposes known limits: chords shorter than the 0.7 s minimum
+(one per beat at 96 BPM) are merged away (49% frame accuracy), inversions
+such as `C/E` are read as the chord on the bass note, and changes pushed off
+the beat land ~190 ms late because segments follow the beat grid.
 
 Run it yourself:
 
 ```bash
-python scripts/chord_eval.py           # full suite
+python scripts/chord_eval.py                 # every suite
+python scripts/chord_eval.py --suite hard    # one suite
 python scripts/chord_eval.py --song fast-d --dump   # detected-vs-truth timeline
+python scripts/chord_eval.py --isolate roformer     # score through vocal removal
 ```
 
 Synthetic renders are cleaner than real recordings (no vocals, no dense
@@ -110,6 +121,27 @@ them. Already-clean songs are left unchanged, and separation can cost a little
 where it leaves an artifact on a low-information section such as a fade-out —
 hence a flag, not the default. (Exact scores drift a point or two run-to-run, as
 GPU-accelerated separation naturally does.)
+
+### Separator benchmark: real vocals
+
+Freely licensed recordings come without chord charts, so
+`scripts/vocal_isolation_eval.py` measures vocal removal directly on open
+multitrack clips (the SiSEC18/MUSDB18 7-second excerpts, CC BY 4.0, test
+split): the reference is the detector's reading of the real drums + bass +
+other stems with the vocal track left out, and each separator is scored on
+how closely it recovers those chords from the full mix. On the 12 clips with
+the most prominent vocals:
+
+| | Raw mix | `--separator demucs` | `--separator roformer` |
+|---|---:|---:|---:|
+| Frame agreement with the vocal-free chords | 80.6% | 84.3% | **96.1%** |
+| Chord-sequence agreement | 70.6% | 77.5% | **91.0%** |
+| Clips matched exactly | 2 / 12 | 2 / 12 | **8 / 12** |
+| Clips better / worse than raw | — | 5 / 7 | **10 / 0** |
+
+On the synthetic suites (no real singing) RoFormer leaves the result
+unchanged, while Demucs lowers chord-change F1 on the hard suite from 91.5% to
+78.1%: with the drums removed, the beat tracker locks onto arpeggio notes.
 
 ### Default separator: Mel-Band RoFormer
 
